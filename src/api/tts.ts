@@ -58,8 +58,18 @@ export interface TTSGenerateParams {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const _get = <T>(path: string) =>
-  fetch(`${TTS_BASE}${path}`).then((r) => {
-    if (!r.ok) throw new Error(`TTS API error ${r.status}`);
+  fetch(`${TTS_BASE}${path}`).then(async (r) => {
+    if (!r.ok) {
+      try {
+        const body = (await r.json()) as _ApiEnvelope<never>;
+        throw new Error(body.error?.message ?? `TTS API error ${r.status}`);
+      } catch (e) {
+        if (e instanceof SyntaxError) {
+          throw new Error(`TTS API error ${r.status}`);
+        }
+        throw e;
+      }
+    }
     return _parseEnvelope<T>(r);
   });
 
