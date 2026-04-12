@@ -1,7 +1,8 @@
-﻿/**
+/**
  * tts.ts — API client cho Gemini TTS Proxy (port 8700).
  *
- * Tách riêng khỏi client.ts vì TTS proxy chạy ở port khác (8700 vs 8709).
+ * /health và /voices trả về ApiResponse[T] envelope.
+ * /tts trả về binary WAV — không envelope.
  */
 
 if (!import.meta.env.VITE_TTS_BASE_URL)
@@ -9,17 +10,44 @@ if (!import.meta.env.VITE_TTS_BASE_URL)
 
 const TTS_BASE = `${import.meta.env.VITE_TTS_BASE_URL}/api`;
 
+// ── Envelope ──────────────────────────────────────────────────────────────────
+
+interface _ApiEnvelope<T> {
+  success: boolean;
+  data?: T;
+  error?: { code: string; message: string };
+  meta: { request_id: string; ts: string };
+}
+
+const _parseEnvelope = async <T>(r: Response): Promise<T> => {
+  const body = (await r.json()) as _ApiEnvelope<T>;
+  if (!body.success) {
+    throw new Error(body.error?.message ?? `HTTP ${r.status}`);
+  }
+  return body.data as T;
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TTSHealth {
   status: "ok";
   model: string;
+  default_voice: string;
+  default_speed: number;
+  voice_speed: number;
   available_keys: number;
+  available_today: number;
+  keys: Array<{ key: string; remaining: number; max_rpd: number }>;
 }
 
 export interface GeminiVoice {
   voice_id: string;
   name: string;
+}
+
+export interface TTSVoicesResponse {
+  voices: GeminiVoice[];
+  count: number;
 }
 
 export interface TTSGenerateParams {
@@ -29,23 +57,18 @@ export interface TTSGenerateParams {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const _json = async <T>(r: Response): Promise<T> => {
-  if (!r.ok) {
-    const text = await r.text().catch(() => `HTTP ${r.status}`);
-    throw new Error(`TTS API error ${r.status}: ${text.slice(0, 200)}`);
-  }
-  return r.json() as Promise<T>;
-};
-
 const _get = <T>(path: string) =>
-  fetch(`${TTS_BASE}${path}`).then((r) => _json<T>(r));
+  fetch(`${TTS_BASE}${path}`).then((r) => {
+    if (!r.ok) throw new Error(`TTS API error ${r.status}`);
+    return _parseEnvelope<T>(r);
+  });
 
 // ── TTS API ───────────────────────────────────────────────────────────────────
 
 export const ttsApi = {
   health: () => _get<TTSHealth>("/health"),
 
-  listVoices: () => _get<{ voices: GeminiVoice[]; count: number }>("/voices"),
+  listVoices: () => _get<TTSVoicesResponse>("/voices"),
 
   /** Generate TTS → trả về Blob URL (WAV) để play ngay. */
   generate: async (params: TTSGenerateParams): Promise<{ blobUrl: string; voiceId: string }> => {
@@ -61,8 +84,16 @@ export const ttsApi = {
     });
 
     if (!r.ok) {
-      const text = await r.text().catch(() => `HTTP ${r.status}`);
-      throw new Error(`TTS generate error ${r.status}: ${text.slice(0, 200)}`);
+      // /tts trả về envelope JSON khi lỗi
+      try {
+        const errBody = (await r.json()) as _ApiEnvelope<never>;
+        throw new Error(errBody.error?.message ?? `TTS generate error ${r.status}`);
+      } catch (e) {
+        if (e instanceof SyntaxError) {
+          throw new Error(`TTS generate error ${r.status}`);
+        }
+        throw e;
+      }
     }
 
     const blob = await r.blob();
