@@ -2,8 +2,10 @@ import { useState } from "react";
 
 // ── Service groups for conditional rendering ───────────────────────────────
 
-const OR_SERVICES  = new Set(["OPENROUTER"]);
-const KLING_SERVICES = new Set(["KLING", "KLINGAI"]);
+const OR_SERVICES       = new Set(["OPENROUTER"]);
+const OLLAMA_SERVICES   = new Set(["OLLAMA"]);
+const KLING_SERVICES    = new Set(["KLING", "KLINGAI"]);
+const CHATGPT_SERVICES  = new Set(["CHATGPT"]);
 
 interface Props {
   serviceFilter: string;
@@ -21,6 +23,10 @@ interface Props {
   onCheckORPrivacy: () => void;
   onCheckAndCleanOR: () => void;
   onFixORPrivacy: () => void;
+
+  // Ollama actions
+  syncingOllama: boolean;
+  onSyncOllama: () => void;
 
   // General sync
   syncing: boolean;
@@ -40,6 +46,7 @@ export default function ActionsDropdown({
   syncingOR, orPrivacyRunning, orPrivacyProgress,
   cleaningOR, cleanORProgress, fixingPrivacy, fixPrivacyProgress,
   onSyncOR, onCheckORPrivacy, onCheckAndCleanOR, onFixORPrivacy,
+  syncingOllama, onSyncOllama,
   syncing, syncingAuth, onSyncProxy, onSyncAuth,
   onKlingSession,
   onDeleteDisabled,
@@ -48,8 +55,10 @@ export default function ActionsDropdown({
   const close = () => setOpen(false);
   const run = (fn: () => void) => { close(); fn(); };
 
-  const showOR    = serviceFilter === "ALL" || OR_SERVICES.has(serviceFilter);
-  const showKling = serviceFilter === "ALL" || KLING_SERVICES.has(serviceFilter);
+  const showOR      = serviceFilter === "ALL" || OR_SERVICES.has(serviceFilter);
+  const showOllama  = serviceFilter === "ALL" || OLLAMA_SERVICES.has(serviceFilter);
+  const showKling   = serviceFilter === "ALL" || KLING_SERVICES.has(serviceFilter);
+  const showChatGPT = serviceFilter === "ALL" || CHATGPT_SERVICES.has(serviceFilter);
 
   return (
     <div className="relative">
@@ -106,23 +115,40 @@ export default function ActionsDropdown({
               </>
             )}
 
-            {/* General sync — always visible */}
-            <button onClick={() => run(onSyncProxy)} disabled={syncing}
-              className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 disabled:opacity-40 flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {syncing ? "Syncing…" : "Sync CLIProxy"}
-            </button>
-            <button onClick={() => run(onSyncAuth)} disabled={syncingAuth}
-              className="w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-700 disabled:opacity-40 flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              {syncingAuth ? "Syncing Auth…" : "Sync Auth"}
-            </button>
+            {/* Ollama-specific actions */}
+            {showOllama && (
+              <>
+                <button onClick={() => run(onSyncOllama)} disabled={syncingOllama}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 disabled:opacity-40 flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {syncingOllama ? "Syncing Ollama…" : "Sync Ollama → CLIProxy"}
+                </button>
+              </>
+            )}
+
+            {/* ChatGPT sync */}
+            {showChatGPT && (
+              <>
+                <button onClick={() => run(onSyncProxy)} disabled={syncing}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 disabled:opacity-40 flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {syncing ? "Syncing…" : "Sync CLIProxy"}
+                </button>
+                <button onClick={() => run(onSyncAuth)} disabled={syncingAuth}
+                  className="w-full text-left px-4 py-2 hover:bg-blue-50 text-blue-700 disabled:opacity-40 flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  {syncingAuth ? "Syncing Auth…" : "Sync Auth"}
+                </button>
+              </>
+            )}
 
             {/* Kling */}
             {showKling && (

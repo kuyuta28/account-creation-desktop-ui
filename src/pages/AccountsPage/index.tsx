@@ -49,6 +49,7 @@ export default function AccountsPage() {
     orPrivacyRunning, orPrivacyProgress, checkORPrivacy,
     cleaningOR, cleanORProgress, checkAndCleanOR,
     fixingPrivacy, fixPrivacyProgress, fixORPrivacy,
+    syncingOllama, syncOllamaToCliproxy,
     syncing, syncProxy, syncingAuth, syncAuth, launchKlingSession,
     deletingDisabled, deleteDisabled,
     addForm, setAddForm, addError, adding, handleAddAccount, resetAddForm,
@@ -183,6 +184,8 @@ export default function AccountsPage() {
             onCheckORPrivacy={checkORPrivacy}
             onCheckAndCleanOR={checkAndCleanOR}
             onFixORPrivacy={fixORPrivacy}
+            syncingOllama={syncingOllama}
+            onSyncOllama={syncOllamaToCliproxy}
             syncing={syncing}
             syncingAuth={syncingAuth}
             onSyncProxy={syncProxy}

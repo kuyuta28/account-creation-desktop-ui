@@ -152,6 +152,27 @@ function useORActions(onRefresh: Deps["onRefresh"], onToast: Deps["onToast"]) {
   };
 }
 
+// ── Ollama actions ────────────────────────────────────────────────────────
+
+function useOllamaActions(onToast: Deps["onToast"]) {
+  const [syncingOllama, setSyncingOllama] = useState(false);
+
+  const syncOllamaToCliproxy = () => {
+    setSyncingOllama(true);
+    api.syncOllamaToCliproxy()
+      .then((r) => onToast(
+        r.added > 0
+          ? `Đã thêm ${r.added} key Ollama vào CLIProxy (tổng: ${r.total})`
+          : `CLIProxy đã có đủ key Ollama (${r.total} key)`,
+        true,
+      ))
+      .catch((err) => onToast(`Sync Ollama lỗi: ${String(err)}`, false))
+      .finally(() => setSyncingOllama(false));
+  };
+
+  return { syncingOllama, syncOllamaToCliproxy };
+}
+
 // ── Sync / Kling ──────────────────────────────────────────────────────────
 
 function useSyncActions(_onRefresh: Deps["onRefresh"], onToast: Deps["onToast"]) {
@@ -324,6 +345,7 @@ export function useAccountActions({ onRefresh, onToast }: Deps) {
   return {
     ...useChecking(onRefresh, onToast),
     ...useORActions(onRefresh, onToast),
+    ...useOllamaActions(onToast),
     ...useSyncActions(onRefresh, onToast),
     ...useDeleteDisabled(onRefresh, onToast),
     ...useCRUD(onRefresh, onToast),

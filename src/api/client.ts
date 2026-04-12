@@ -330,6 +330,9 @@ export const api = {
   syncOpenRouterToCliproxy: () =>
     post<{ added: number; total: number; keys_added: string[] }>("/accounts/sync-openrouter-cliproxy", {}),
 
+  syncOllamaToCliproxy: () =>
+    post<{ added: number; total: number; keys_added: string[] }>("/accounts/sync-ollama-cliproxy", {}),
+
   getKeyDetail: (service: string, apiKey: string) =>
     post<{
       valid: boolean;
