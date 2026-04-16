@@ -68,18 +68,36 @@ function useORActions(onRefresh: Deps["onRefresh"], onToast: Deps["onToast"]) {
   const [cleanORProgress, setCleanProgress] = useState("");
   const [fixingPrivacy, setFixingPrivacy]   = useState(false);
   const [fixPrivacyProgress, setFixProgress] = useState("");
+  // Sync modal state
+  const [orSyncModalOpen, setOrSyncModalOpen] = useState(false);
+  const [orPreviewLoading, setOrPreviewLoading] = useState(false);
+  const [orSyncPreview, setOrSyncPreview] = useState<any>(null);
 
-  const syncOpenRouterToCliproxy = () => {
+  const syncOpenRouterToCliproxy = (emails?: string[]) => {
     setSyncingOR(true);
-    api.syncOpenRouterToCliproxy()
-      .then((r) => onToast(
-        r.added > 0
-          ? `Đã thêm ${r.added} key vào CLIProxy (tổng: ${r.total})`
-          : `CLIProxy đã có đủ key (${r.total} key)`,
-        true,
-      ))
+    api.syncOpenRouterToCliproxy(emails)
+      .then((r) => {
+        onToast(
+          r.added > 0
+            ? `Đã thêm ${r.added} key vào CLIProxy (tổng: ${r.total})`
+            : `CLIProxy đã có đủ key (${r.total} key)`,
+          true,
+        );
+        setOrSyncModalOpen(false);
+      })
       .catch((err) => onToast(`Sync OR lỗi: ${String(err)}`, false))
       .finally(() => setSyncingOR(false));
+  };
+
+  const previewSyncOR = () => {
+    setOrPreviewLoading(true);
+    api.previewSyncOpenRouterToCliproxy()
+      .then((r) => {
+        setOrSyncPreview(r);
+        setOrSyncModalOpen(true);
+      })
+      .catch((err) => onToast(`Preview OR lỗi: ${String(err)}`, false))
+      .finally(() => setOrPreviewLoading(false));
   };
 
   const checkORPrivacy = () => {
@@ -149,6 +167,10 @@ function useORActions(onRefresh: Deps["onRefresh"], onToast: Deps["onToast"]) {
     orPrivacyRunning, orPrivacyProgress, checkORPrivacy,
     cleaningOR, cleanORProgress, checkAndCleanOR,
     fixingPrivacy, fixPrivacyProgress, fixORPrivacy,
+    // Sync modal
+    orSyncModalOpen, setOrSyncModalOpen,
+    orPreviewLoading, orSyncPreview,
+    previewSyncOR,
   };
 }
 
@@ -156,6 +178,10 @@ function useORActions(onRefresh: Deps["onRefresh"], onToast: Deps["onToast"]) {
 
 function useOllamaActions(onToast: Deps["onToast"]) {
   const [syncingOllama, setSyncingOllama] = useState(false);
+  const [syncingOllama9router, setSyncingOllama9router] = useState(false);
+  const [previewing9router, setPreviewing9router] = useState(false);
+  const [sync9routerPreview, setSync9routerPreview] = useState<any>(null);
+  const [show9routerModal, setShow9routerModal] = useState(false);
 
   const syncOllamaToCliproxy = () => {
     setSyncingOllama(true);
@@ -170,7 +196,39 @@ function useOllamaActions(onToast: Deps["onToast"]) {
       .finally(() => setSyncingOllama(false));
   };
 
-  return { syncingOllama, syncOllamaToCliproxy };
+  const previewSyncOllamaTo9router = (emails?: string[]) => {
+    setPreviewing9router(true);
+    api.previewSyncOllamaTo9router(emails)
+      .then((r) => {
+        setSync9routerPreview(r);
+        setShow9routerModal(true);
+      })
+      .catch((err) => onToast(`Preview 9router lỗi: ${String(err)}`, false))
+      .finally(() => setPreviewing9router(false));
+  };
+
+  const syncOllamaTo9router = (emails?: string[]) => {
+    setSyncingOllama9router(true);
+    api.syncOllamaTo9router(emails)
+      .then((r) => {
+        setShow9routerModal(false);
+        onToast(
+          r.added_count > 0
+            ? `Đã thêm ${r.added_count} Ollama account vào 9router`
+            : `9router đã có đủ Ollama accounts`,
+          true,
+        );
+      })
+      .catch((err) => onToast(`Sync 9router lỗi: ${String(err)}`, false))
+      .finally(() => setSyncingOllama9router(false));
+  };
+
+  return {
+    syncingOllama, syncOllamaToCliproxy,
+    syncingOllama9router, syncOllamaTo9router,
+    previewing9router, previewSyncOllamaTo9router,
+    sync9routerPreview, show9routerModal, setShow9routerModal,
+  };
 }
 
 // ── Sync / Kling ──────────────────────────────────────────────────────────

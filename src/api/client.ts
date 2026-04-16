@@ -327,11 +327,38 @@ export const api = {
   syncCliProxy: () =>
     post<{ deleted: number; files: string[]; bad_count: number }>("/accounts/sync-cliproxy", {}),
 
-  syncOpenRouterToCliproxy: () =>
-    post<{ added: number; total: number; keys_added: string[] }>("/accounts/sync-openrouter-cliproxy", {}),
+  syncOpenRouterToCliproxy: (emails?: string[]) =>
+    post<{ added: number; total: number; keys_added: string[] }>("/accounts/sync-openrouter-cliproxy", { emails: emails ?? null }),
+
+  previewSyncOpenRouterToCliproxy: (emails?: string[]) =>
+    post<{
+      total: number;
+      will_sync: number;
+      exists_count: number;
+      items: { email: string; api_key: string; has_api_key: boolean; exists_in_target: boolean; will_sync: boolean; last_used?: string; check_status?: string; last_error?: string; consecutive_use?: number; disabled?: boolean }[];
+    }>("/accounts/sync-openrouter-cliproxy/preview", { emails: emails ?? null }),
 
   syncOllamaToCliproxy: () =>
     post<{ added: number; total: number; keys_added: string[] }>("/accounts/sync-ollama-cliproxy", {}),
+
+  syncOllamaTo9router: (emails?: string[], dbPath?: string) =>
+    post<{
+      db_path: string;
+      total_local: number;
+      added_count: number;
+      skipped_count: number;
+      added: { email: string; priority: number; connection_id: string }[];
+      skipped: { email: string; reason: string }[];
+    }>("/accounts/sync-ollama-9router", { emails: emails ?? null, db_path: dbPath }),
+
+  previewSyncOllamaTo9router: (emails?: string[]) =>
+    post<{
+      db_path: string;
+      total: number;
+      new_count: number;
+      exists_count: number;
+      items: { email: string; has_api_key: boolean; exists_in_9router: boolean; will_sync: boolean }[];
+    }>("/accounts/sync-ollama-9router/preview", { emails: emails ?? null }),
 
   getKeyDetail: (service: string, apiKey: string) =>
     post<{

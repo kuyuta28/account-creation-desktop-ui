@@ -1,5 +1,6 @@
 import { useState } from "react";
 import GmailVariationsModal from "../../components/GmailVariationsModal";
+import SyncModal from "../../components/SyncModal";
 import FilterBar from "../../components/FilterBar";
 import { Account } from "../../api/client";
 import { MAILBOX_PROVIDER_SERVICES } from "../../constants/accounts";
@@ -49,13 +50,19 @@ export default function AccountsPage() {
     orPrivacyRunning, orPrivacyProgress, checkORPrivacy,
     cleaningOR, cleanORProgress, checkAndCleanOR,
     fixingPrivacy, fixPrivacyProgress, fixORPrivacy,
+    // OR sync modal
+    orSyncModalOpen, setOrSyncModalOpen,
+    orPreviewLoading, orSyncPreview, previewSyncOR,
+    // Ollama
     syncingOllama, syncOllamaToCliproxy,
+    syncingOllama9router, previewing9router, previewSyncOllamaTo9router,
     syncing, syncProxy, syncingAuth, syncAuth, launchKlingSession,
     deletingDisabled, deleteDisabled,
     addForm, setAddForm, addError, adding, handleAddAccount, resetAddForm,
     editAcc, setEditAcc, editForm, setEditForm, editError, editing, openEdit, handleEditAccount,
     toggleDisabled, remove,
     detailAcc, setDetailAcc, detailData, detailLoading, detailError, openDetail,
+    sync9routerPreview, show9routerModal, setShow9routerModal, syncOllamaTo9router,
   } = actions;
 
   return (
@@ -186,6 +193,9 @@ export default function AccountsPage() {
             onFixORPrivacy={fixORPrivacy}
             syncingOllama={syncingOllama}
             onSyncOllama={syncOllamaToCliproxy}
+            syncingOllama9router={syncingOllama9router}
+            previewing9router={previewing9router}
+            onPreviewSyncOllama9router={previewSyncOllamaTo9router}
             syncing={syncing}
             syncingAuth={syncingAuth}
             onSyncProxy={syncProxy}
@@ -316,6 +326,39 @@ export default function AccountsPage() {
           onAdded={(count) => { showToast(`Đã thêm ${count} Gmail variations`, true); load(); }}
         />
       )}
+
+      {/* Sync Ollama → 9router Modal */}
+      <SyncModal
+        open={show9routerModal}
+        onClose={() => setShow9routerModal(false)}
+        title="Sync Ollama → 9router"
+        targetName="9router"
+        items={(sync9routerPreview?.items || []).map((i: any) => ({
+          ...i,
+          exists_in_target: i.exists_in_9router,
+        }))}
+        loading={previewing9router}
+        onSync={(emails) => syncOllamaTo9router(emails)}
+        syncing={syncingOllama9router}
+        total={sync9routerPreview?.total || 0}
+        newCount={sync9routerPreview?.new_count || 0}
+        existsCount={sync9routerPreview?.exists_count || 0}
+      />
+
+      {/* Sync OpenRouter → CLIProxy Modal */}
+      <SyncModal
+        open={orSyncModalOpen}
+        onClose={() => setOrSyncModalOpen(false)}
+        title="Sync OpenRouter → CLIProxy"
+        targetName="CLIProxy"
+        items={orSyncPreview?.items || []}
+        loading={orPreviewLoading}
+        onSync={(emails) => syncOpenRouterToCliproxy(emails)}
+        syncing={syncingOR}
+        total={orSyncPreview?.total || 0}
+        newCount={orSyncPreview?.will_sync || 0}
+        existsCount={orSyncPreview?.exists_count || 0}
+      />
     </div>
   );
 }
