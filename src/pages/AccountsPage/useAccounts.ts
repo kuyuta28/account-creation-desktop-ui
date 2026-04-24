@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { api, Account } from "../../api/client";
-import { PAGE_SIZE } from "../../constants/accounts";
 import {
   Filters, DEFAULT_FILTERS, SortKey, SortDir,
   ColKey, DEFAULT_VISIBLE_COLS,
@@ -41,10 +40,21 @@ export interface UseAccountsReturn {
   toggleCol: (k: ColKey) => void;
 }
 
+interface ApiAccountsResponse {
+  accounts: Account[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAccountsReturn {
-  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
-  const [services, setServices]       = useState<string[]>(["ALL"]);
-  const [loading, setLoading]         = useState(false);
+  // Server-side data from current page
+  const [serverAccounts, setServerAccounts] = useState<Account[]>([]);
+  const [serverTotal, setServerTotal]       = useState(0);
+  const [serverPages, setServerPages]       = useState(1);
+  const [services, setServices]             = useState<string[]>(["ALL"]);
+  const [loading, setLoading]               = useState(false);
 
   const [serviceFilter, setServiceFilter] = useState("ALL");
   const [filters, setFilters]             = useState<Filters>(DEFAULT_FILTERS);
@@ -53,19 +63,44 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
   const [page, setPage]                   = useState(1);
   const [visibleCols, setVisibleCols]     = useState<Set<ColKey>>(new Set(DEFAULT_VISIBLE_COLS));
 
-  const load = useCallback(() => {
+  const PAGE_SIZE = 100;
+
+  const load = useCallback((pg?: number) => {
     setLoading(true);
-    Promise.all([api.getAccounts(), api.getServices()])
-      .then(([accounts, serviceList]) => {
-        setAllAccounts(accounts);
+    const p = pg ?? page;
+    Promise.all([
+      api.getAccounts(serviceFilter !== "ALL" ? serviceFilter : undefined, p, PAGE_SIZE),
+      api.getServices(),
+    ])
+      .then(([resp, serviceList]) => {
+        const r = resp as ApiAccountsResponse;
+        setServerAccounts(r.accounts);
+        setServerTotal(r.total);
+        setServerPages(r.pages);
         setServices(["ALL", ...serviceList]);
       })
       .catch((err) => onToast(`Load lỗi: ${String(err)}`, false))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [serviceFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  // Reload when service filter changes
+  useEffect(() => {
+    setPage(1);
+    load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceFilter]);
+
+  // Reload when page changes
+  useEffect(() => {
+    if (page !== 1) load(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // Manual refresh (same page)
+  const handleRefresh = useCallback(() => {
+    load(page);
+  }, [load, page]);
 
   const handleSort = useCallback((col: SortKey) => {
     if (sortKey === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -93,10 +128,11 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
 
   const col = useCallback((k: ColKey) => visibleCols.has(k), [visibleCols]);
 
+  // Client-side filter on current server page
   const filtered = useMemo(() => {
     const q = filters.email.toLowerCase().trim();
     const quotaNum = filters.quotaOp && filters.quotaVal ? parseInt(filters.quotaVal) : NaN;
-    return allAccounts.filter((a) => {
+    return serverAccounts.filter((a) => {
       if (serviceFilter !== "ALL" && a.service !== serviceFilter) return false;
       if (filters.status !== "all" && a.status !== filters.status) return false;
       if (q && !a.email.toLowerCase().includes(q) && !(a.api_key ?? "").toLowerCase().includes(q)) return false;
@@ -110,7 +146,7 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
       if (filters.hasKey === "no" && !!a.api_key) return false;
       return true;
     });
-  }, [allAccounts, serviceFilter, filters]);
+  }, [serverAccounts, serviceFilter, filters]);
 
   const sorted = useMemo(() => {
     const statusRank = (x: Account) =>
@@ -131,30 +167,35 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
     });
   }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const pageData   = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, serverPages);
+  const pageData   = sorted;
 
   const serviceCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: allAccounts.length };
-    for (const a of allAccounts) counts[a.service] = (counts[a.service] ?? 0) + 1;
+    const counts: Record<string, number> = { ALL: serverTotal };
+    for (const a of serverAccounts) counts[a.service] = (counts[a.service] ?? 0) + 1;
     return counts;
-  }, [allAccounts]);
+  }, [serverAccounts, serverTotal]);
 
   const disabledCountForService = useMemo(() => {
-    const base = serviceFilter === "ALL" ? allAccounts : allAccounts.filter((a) => a.service === serviceFilter);
+    const base = serviceFilter === "ALL" ? serverAccounts : serverAccounts.filter((a) => a.service === serviceFilter);
     return base.filter((a) => a.status === "disabled").length;
-  }, [allAccounts, serviceFilter]);
+  }, [serverAccounts, serviceFilter]);
 
-  const activeCount  = useMemo(() => allAccounts.filter((a) => !a.disabled).length, [allAccounts]);
-  const withKeyCount = useMemo(() => allAccounts.filter((a) => !!a.api_key).length, [allAccounts]);
+  const activeCount  = useMemo(() => serverAccounts.filter((a) => !a.disabled).length, [serverAccounts]);
+  const withKeyCount = useMemo(() => serverAccounts.filter((a) => !!a.api_key).length, [serverAccounts]);
 
   return {
-    allAccounts, services, loading, load,
+    get allAccounts() { return serverAccounts; },
+    services, loading,
+    get load() { return handleRefresh; },
     serviceFilter, setServiceFilter,
     sortKey, sortDir, handleSort,
     filters, updateFilters, resetFilters,
     page, setPage,
-    filtered, sorted, pageData, totalPages,
+    get filtered() { return filtered; },
+    get sorted() { return sorted; },
+    get pageData() { return pageData; },
+    totalPages,
     serviceCounts, disabledCountForService, activeCount, withKeyCount,
     visibleCols, col, toggleCol,
   };

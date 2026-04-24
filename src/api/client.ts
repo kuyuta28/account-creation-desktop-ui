@@ -1,6 +1,6 @@
-﻿if (!import.meta.env.VITE_API_BASE_URL) throw new Error("VITE_API_BASE_URL không được cấu hình");
-export const _API_ORIGIN = import.meta.env.VITE_API_BASE_URL;
-const BASE = `${_API_ORIGIN}/api/v1`;
+﻿import { API_BASE_URL } from "../config";
+export const _API_ORIGIN = API_BASE_URL;
+const BASE = _API_ORIGIN;
 
 // ── Envelope ──────────────────────────────────────────────────────────────────
 interface _ApiEnvelope<T> {
@@ -219,8 +219,16 @@ const postBinary = (path: string, body: unknown): Promise<ArrayBuffer> =>
 // ── API surface ───────────────────────────────────────────────────────────────
 
 export const api = {
-  getAccounts: (service?: string) =>
-    get<Account[]>(`/accounts${service ? `?service=${service}` : ""}`),
+  getAccounts: (service?: string, page?: number, limit?: number) => {
+    const params = new URLSearchParams();
+    if (service) params.set("service", service);
+    if (page != null) params.set("page", String(page));
+    if (limit != null) params.set("limit", String(limit));
+    const qs = params.toString();
+    return get<{ accounts: Account[]; total: number; page: number; limit: number; pages: number }>(
+      `/accounts${qs ? `?${qs}` : ""}`
+    );
+  },
 
   deleteAccount: (service: string, email: string) =>
     del<{ deleted: boolean }>(
