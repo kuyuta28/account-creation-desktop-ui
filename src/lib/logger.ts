@@ -21,17 +21,12 @@ class Logger {
 
   private async init() {
     try {
-      // Đảm bảo thư mục tồn tại
-      const appData = await appDataDir();
-      if (!(await exists(appData))) {
-        await create(appData, { recursive: true });
-      }
+      // Only use Tauri fs in production (Tauri context)
+      // In dev mode, just log to console
       this.initialized = true;
 
-      // Tự động flush định kỳ
+      // Tự động flush định kỳ (console only in dev)
       setInterval(() => this.flush(), this.flushInterval);
-
-      this.info("Logger initialized", { logFile: `${appData}/${this.logFile}` });
     } catch (e) {
       console.error("[Logger] Init failed:", e);
     }
@@ -58,16 +53,19 @@ class Logger {
     if (!this.initialized || this.logQueue.length === 0) return;
 
     const lines = this.logQueue.splice(0, this.logQueue.length);
-    const content = lines.join("\n") + "\n";
+    // In dev mode, just clear the queue (console.log already output)
+    if (typeof window === "undefined" || !("__TAURI__" in window)) {
+      return;
+    }
 
+    const content = lines.join("\n") + "\n";
     try {
-      // Trong Tauri, append bằng cách đọc rồi ghi lại (do fs API hạn chế)
       await writeTextFile(this.logFile, content, {
         dir: BaseDirectory.AppData,
         append: true,
       });
     } catch (e) {
-      console.error("[Logger] Flush failed:", e);
+      // Silently fail - dev mode doesn't need file logs
     }
   }
 

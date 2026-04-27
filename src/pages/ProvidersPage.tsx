@@ -8,7 +8,6 @@ const SERVICE_LABELS: Record<string, string> = {
   openrouter:         "OpenRouter",
   leonardo:           "Leonardo",
   klingai:            "KlingAI",
-  "2slides":          "2Slides",
   testmail:           "Testmail",
   mailosaur:          "Mailosaur",
   artificialanalysis: "ArtAnalysis",

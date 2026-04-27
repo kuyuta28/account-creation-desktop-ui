@@ -25,8 +25,8 @@ describe("api.getAccounts", () => {
         return HttpResponse.json(_ok([mockAccounts[0]]));
       })
     );
-    await api.getAccounts("TWOSLIDES");
-    expect(capturedUrl).toContain("service=TWOSLIDES");
+    await api.getAccounts("ELEVENLABS");
+    expect(capturedUrl).toContain("service=ELEVENLABS");
   });
 });
 
@@ -39,7 +39,7 @@ describe("api.deleteAccount", () => {
         return HttpResponse.json(_ok({ deleted: true }));
       })
     );
-    const result = await api.deleteAccount("TWOSLIDES", "alice@test.com");
+    const result = await api.deleteAccount("ELEVENLABS", "alice@test.com");
     expect(method).toBe("DELETE");
     expect(result.deleted).toBe(true);
   });
@@ -54,7 +54,7 @@ describe("api.updateAccount", () => {
         return HttpResponse.json(_ok(mockAccounts[0]));
       })
     );
-    await api.updateAccount("TWOSLIDES", "alice@test.com", { disabled: true });
+    await api.updateAccount("ELEVENLABS", "alice@test.com", { disabled: true });
     expect(body).toEqual({ disabled: true });
   });
 });
@@ -62,7 +62,7 @@ describe("api.updateAccount", () => {
 describe("api.getServices", () => {
   it("returns services list", async () => {
     const result = await api.getServices();
-    expect(result).toContain("TWOSLIDES");
+    expect(result).toContain("ELEVENLABS");
     expect(result).toContain("OPENROUTER");
   });
 });

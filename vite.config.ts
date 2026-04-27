@@ -21,6 +21,7 @@ export default defineConfig({
     strictPort: true,
     hmr: false,
     watch: { ignored: ["**/src-tauri/**"] },
+    envDir: "./",
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

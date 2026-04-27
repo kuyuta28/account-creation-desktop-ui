@@ -28,7 +28,7 @@ describe("CreatePage — initial render", () => {
 
   it("populates service dropdown from API", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByRole("option", { name: "TWOSLIDES" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("option", { name: "ELEVENLABS" })).toBeInTheDocument());
     expect(screen.getByRole("option", { name: "OPENROUTER" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "CHATGPT" })).toBeInTheDocument();
   });
@@ -89,8 +89,8 @@ describe("CreatePage — start job", () => {
     await user.click(screen.getByRole("button", { name: /run/i }));
 
     await waitFor(() => expect(screen.getByText("Active Jobs")).toBeInTheDocument());
-    // TWOSLIDES also appears in history table, so use getAllByText
-    expect(screen.getAllByText("TWOSLIDES").length).toBeGreaterThan(0);
+    // ELEVENLABS also appears in history table, so use getAllByText
+    expect(screen.getAllByText("ELEVENLABS").length).toBeGreaterThan(0);
   });
 
   it("shows error message on API failure", async () => {
@@ -205,7 +205,7 @@ describe("CreatePage — active job card UI", () => {
     server.use(
       http.post(`${BASE}/registration/jobs`, () =>
         HttpResponse.json({
-          id: "job-w2", service: "TWOSLIDES", count: 5, workers: 3,
+          id: "job-w2", service: "ELEVENLABS", count: 5, workers: 3,
           status: "running", created_at: new Date().toISOString(), created_count: 0,
         })
       )
@@ -243,7 +243,7 @@ describe("CreatePage — job history table", () => {
   it("renders history rows from API", async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText("Job History")).toBeInTheDocument());
-    expect(screen.getAllByText("TWOSLIDES").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ELEVENLABS").length).toBeGreaterThan(0);
   });
 
   it("shows done/failed badge with correct style", async () => {
@@ -280,7 +280,7 @@ describe("CreatePage — coverage extras", () => {
     // POST returns a job with status already "done" → Dismiss button appears immediately
     server.use(
       http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ id: "job-done", service: "TWOSLIDES", count: 3, workers: 1,
+        HttpResponse.json({ id: "job-done", service: "ELEVENLABS", count: 3, workers: 1,
           status: "done", created_at: new Date().toISOString(), created_count: 3 })
       )
     );
@@ -364,7 +364,7 @@ describe("CreatePage — coverage extras", () => {
   it("job card shows ⚡workers badge when workers > 1", async () => {
     server.use(
       http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ id: "job-multi", service: "TWOSLIDES", count: 0, workers: 3,
+        HttpResponse.json({ id: "job-multi", service: "ELEVENLABS", count: 0, workers: 3,
           status: "running", created_at: new Date().toISOString(), created_count: 0 })
       )
     );
