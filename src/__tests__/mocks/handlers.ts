@@ -36,26 +36,26 @@ const _handlers = [
     ],
     meta: _meta,
   })),
-  http.get(/\/registration\/jobs\/job-2/, () => HttpResponse.json({
+  http.get(/\/registration\/jobs\/job-2\/?/, () => HttpResponse.json({
     success: true,
     data: { id: "job-2", service: "OPENROUTER", count: 5, workers: 1, status: "done", created_at: "2026-01-01T08:00:00Z", created_count: 5, processed_count: 5 },
     meta: _meta,
   })),
-  http.post(/\/registration\/jobs/, () => HttpResponse.json({
+  http.post(/\/registration\/jobs\/?/, () => HttpResponse.json({
     success: true,
     data: { id: "job-new", service: "ELEVENLABS", count: 3, workers: 1, status: "running", created_at: "2026-01-01T07:00:00Z", created_count: 0, processed_count: 0 },
     meta: _meta,
   })),
-  http.post(/\/registration\/jobs\/[^/]+\/cancel/, () => HttpResponse.json({
+  http.post(/\/registration\/jobs\/[^/]+\/cancel\/?/, () => HttpResponse.json({
     success: true, data: { cancelled: true }, meta: _meta,
   })),
-  http.get(/\/config\/files/, () => HttpResponse.json({
+  http.get(/\/config\/files\/?/, () => HttpResponse.json({
     success: true, data: { files: ["config.yaml", "mail.yaml"] }, meta: _meta,
   })),
-  http.get(/\/config\/raw/, () => HttpResponse.json({
+  http.get(/\/config\/raw\/?/, () => HttpResponse.json({
     success: true, data: { content: "key: value\n", file: "config.yaml" }, meta: _meta,
   })),
-  http.put(/\/config\/raw/, () => HttpResponse.json({
+  http.put(/\/config\/raw\/?/, () => HttpResponse.json({
     success: true, data: { saved: true }, meta: _meta,
   })),
 ];

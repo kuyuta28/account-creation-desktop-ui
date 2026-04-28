@@ -19,9 +19,14 @@ describe("App routing & sidebar", () => {
 
   it("renders all nav links", () => {
     renderApp();
-    expect(screen.getByRole("link", { name: /accounts/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /create/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /config/i })).toBeInTheDocument();
+    // Use getAllByRole for multiple links; each NavLink renders as <a>
+    expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(13);
+    // Check key labels are present (not using /accounts/i which matches AAR: Accounts too)
+    expect(screen.getByRole("link", { name: /^accounts$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^create$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^config$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mail providers/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /gmail mailboxes/i })).toBeInTheDocument();
   });
 
   it("/ renders AccountsPage", () => {
@@ -46,13 +51,14 @@ describe("App routing & sidebar", () => {
 
   it("active nav link has active class for /", () => {
     renderApp("/");
-    const link = screen.getByRole("link", { name: /accounts/i });
-    expect(link.className).toContain("text-brand-700");
+    // "Accounts" (exact, not "AAR: Accounts")
+    const accountsLink = screen.getByRole("link", { name: /^accounts$/i });
+    expect(accountsLink.className).toContain("text-brand-700");
   });
 
   it("active nav link for /create", () => {
     renderApp("/create");
-    const link = screen.getByRole("link", { name: /create/i });
+    const link = screen.getByRole("link", { name: /^create$/i });
     expect(link.className).toContain("text-brand-700");
   });
 });

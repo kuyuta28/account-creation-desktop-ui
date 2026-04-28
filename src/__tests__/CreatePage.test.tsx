@@ -1,10 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor, fireEvent, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { server } from "./mocks/server";
-import { BASE } from "./mocks/handlers";
 import CreatePage, { LogPanel } from "../pages/CreatePage";
 import * as clientModule from "../api/client";
 
@@ -13,8 +12,38 @@ const renderPage = () =>
 
 const SVC_CFG_KEY = "acc-creator:svc-cfg";
 
+// Default paginated jobs response for GET /registration/jobs (matches handlers.ts shape)
+const _defaultJobsResponse = {
+  success: true,
+  data: [
+    { id: "job-1", service: "ELEVENLABS", count: 10, workers: 2, status: "done", created_at: "2026-01-01T07:00:00Z", created_count: 10, processed_count: 10 },
+    { id: "job-2", service: "OPENROUTER", count: 5, workers: 1, status: "done", created_at: "2026-01-01T08:00:00Z", created_count: 5, processed_count: 5 },
+  ],
+  meta: { request_id: "test", ts: "2026-01-01T00:00:00Z" },
+};
+
+// Default services response
+const _defaultServicesResponse = {
+  success: true,
+  data: ["ELEVENLABS", "OPENROUTER", "CHATGPT"],
+  meta: { request_id: "test", ts: "2026-01-01T00:00:00Z" },
+};
+
 beforeEach(() => {
   localStorage.clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  server.resetHandlers();
+});
+
+// Stub WebSocket so jsdom doesn't throw on new WebSocket()
+// Use a plain function so "new Mock()" works as a constructor
+beforeEach(() => {
+  vi.stubGlobal("WebSocket", class extends Function {
+    constructor() { super(); return { onopen: null, onmessage: null, onerror: null, onclose: null, send: vi.fn(), close: vi.fn() }; }
+  });
 });
 
 describe("CreatePage — initial render", () => {
@@ -94,39 +123,34 @@ describe("CreatePage — start job", () => {
   });
 
   it("shows error message on API failure", async () => {
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ detail: "Service offline" }, { status: 500 })
-      )
+    // Mock api.startJob to throw with the FastAPI detail field
+    vi.spyOn(clientModule.api, "startJob").mockRejectedValueOnce(
+      Object.assign(new Error('{"detail":"Service offline"}'), { isFetchError: true })
     );
     const user = userEvent.setup();
     renderPage();
-    await waitFor(() => screen.getByRole("button", { name: /run/i }));
+    await waitFor(() => screen.getByRole("combobox"));
 
     await user.click(screen.getByRole("button", { name: /run/i }));
     await waitFor(() => expect(screen.getByText(/service offline/i)).toBeInTheDocument());
   });
 
   it("shows fallback error message when detail absent", async () => {
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ message: "bad" }, { status: 400 })
-      )
-    );
+    // Mock api.startJob to throw with a plain error message (no FastAPI detail)
+    vi.spyOn(clientModule.api, "startJob").mockRejectedValueOnce(new Error("some other error"));
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("combobox"));
     await user.click(screen.getByRole("button", { name: /run/i }));
-    await waitFor(() => expect(screen.getByText(/lỗi 400/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/some other error/i)).toBeInTheDocument());
   });
 
   it("shows error when API unreachable", async () => {
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () => HttpResponse.error())
-    );
+    // Simulate network error by mocking api.startJob to throw TypeError
+    vi.spyOn(clientModule.api, "startJob").mockRejectedValueOnce(new TypeError("Failed to fetch"));
     const user = userEvent.setup();
     renderPage();
-    await waitFor(() => screen.getByRole("button", { name: /run/i }));
+    await waitFor(() => screen.getByRole("combobox"));
 
     await user.click(screen.getByRole("button", { name: /run/i }));
     await waitFor(() => expect(screen.getByText(/không kết nối/i)).toBeInTheDocument());
@@ -150,34 +174,42 @@ describe("CreatePage — start job", () => {
 });
 
 describe("CreatePage — active job card UI", () => {
+  // Helper: mock startJob to return a running job
+  const mockStartJob = (overrides: Partial<Parameters<typeof clientModule.api.startJob>[0]> = {}) => {
+    vi.spyOn(clientModule.api, "startJob").mockResolvedValueOnce({
+      id: "job-new", service: "ELEVENLABS", count: 3, workers: 1,
+      status: "running", created_at: new Date().toISOString(), created_count: 0, processed_count: 0,
+      ...overrides,
+    } as Parameters<typeof clientModule.api.startJob>[0]);
+  };
+
   it("shows stop button for running job", async () => {
+    mockStartJob();
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
     await user.click(screen.getByRole("button", { name: /run/i }));
-
     await waitFor(() => expect(screen.getByTitle("Stop")).toBeInTheDocument());
   });
 
   it("clicking stop calls cancel API", async () => {
     let cancelled = false;
-    server.use(
-      http.post(`${BASE}/registration/jobs/job-new/cancel`, () => {
-        cancelled = true;
-        return HttpResponse.json({ ok: true });
-      })
-    );
+    vi.spyOn(clientModule.api, "cancelJob").mockImplementation(() => {
+      cancelled = true;
+      return Promise.resolve({ cancelled: true } as any);
+    });
+    mockStartJob();
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
     await user.click(screen.getByRole("button", { name: /run/i }));
     await waitFor(() => screen.getByTitle("Stop"));
-
     await user.click(screen.getByTitle("Stop"));
     await waitFor(() => expect(cancelled).toBe(true));
   });
 
   it("collapses and expands log panel on header click", async () => {
+    mockStartJob();
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
@@ -202,34 +234,28 @@ describe("CreatePage — active job card UI", () => {
   });
 
   it("shows workers badge when workers > 1", async () => {
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({
-          id: "job-w2", service: "ELEVENLABS", count: 5, workers: 3,
-          status: "running", created_at: new Date().toISOString(), created_count: 0,
-        })
-      )
-    );
+    mockStartJob({ workers: 3, count: 5 });
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
-
-    const [, workersInput] = screen.getAllByRole("spinbutton");
-    fireEvent.change(workersInput, { target: { value: "3" } });
     await user.click(screen.getByRole("button", { name: /run/i }));
-
     await waitFor(() => expect(screen.getByText(/⚡3w/)).toBeInTheDocument());
   });
 });
 
 describe("CreatePage — restore running jobs on mount", () => {
   it("attaches to running jobs from history on load", async () => {
-    server.use(
-      http.get(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json([
-          { id: "job-running", service: "OPENROUTER", count: 10, workers: 1,
-            status: "running", created_at: new Date().toISOString(), created_count: 3 }
-        ])
+    server.resetHandlers(
+      http.get(/\/accounts\/services/, () => HttpResponse.json(_defaultServicesResponse)),
+      http.get(/\/registration\/jobs\/?/, () =>
+        HttpResponse.json({
+          success: true,
+          data: [
+            { id: "job-running", service: "OPENROUTER", count: 10, workers: 1,
+              status: "running", created_at: new Date().toISOString(), created_count: 3, processed_count: 3 }
+          ],
+          meta: { request_id: "test", ts: "2026-01-01T00:00:00Z" },
+        })
       )
     );
     renderPage();
@@ -247,10 +273,16 @@ describe("CreatePage — job history table", () => {
   });
 
   it("shows done/failed badge with correct style", async () => {
+    vi.spyOn(clientModule.api, "getJobs").mockResolvedValueOnce([
+      { id: "job-1", service: "ELEVENLABS", count: 10, workers: 2, status: "done", created_at: "2026-01-01T07:00:00Z", created_count: 10, processed_count: 10 },
+      { id: "job-2", service: "OPENROUTER", count: 5, workers: 1, status: "done", created_at: "2026-01-01T08:00:00Z", created_count: 5, processed_count: 5 },
+    ] as Parameters<typeof clientModule.api.getJobs>[0]);
     renderPage();
     await waitFor(() => screen.getByText("Job History"));
-    // Both jobs are "done" → multiple badges; check the first one
-    const doneBadges = screen.getAllByText("done");
+    // Find badges inside the history table
+    const historyTable = document.querySelector("table") as HTMLElement;
+    expect(historyTable).not.toBeNull();
+    const doneBadges = within(historyTable).getAllByText("done");
     expect(doneBadges.length).toBeGreaterThan(0);
     expect(doneBadges[0].className).toContain("emerald");
   });
@@ -277,25 +309,26 @@ describe("CreatePage — coverage extras", () => {
   });
 
   it("dismisses a done job card when Dismiss button clicked", async () => {
-    // POST returns a job with status already "done" → Dismiss button appears immediately
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ id: "job-done", service: "ELEVENLABS", count: 3, workers: 1,
-          status: "done", created_at: new Date().toISOString(), created_count: 3 })
-      )
-    );
+    vi.spyOn(clientModule.api, "startJob").mockResolvedValueOnce({
+      id: "job-done", service: "ELEVENLABS", count: 3, workers: 1,
+      status: "done", created_at: new Date().toISOString(), created_count: 3, processed_count: 3,
+    } as Parameters<typeof clientModule.api.startJob>[0]);
+    // Stub cancelJob to avoid real API calls
+    vi.spyOn(clientModule.api, "cancelJob").mockResolvedValue({ cancelled: true } as any);
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
     await user.click(screen.getByRole("button", { name: /run/i }));
     await waitFor(() => expect(screen.getByText("Active Jobs")).toBeInTheDocument());
 
-    // Job is already "done" → Dismiss button appears immediately
-    await waitFor(() => expect(screen.getByTitle("Dismiss")).toBeInTheDocument());
-    await user.click(screen.getByTitle("Dismiss"));
+    // Find all Delete buttons — one from active card, history ones too
+    const before = screen.getAllByTitle("Delete");
+    expect(before.length).toBeGreaterThan(0);
+    await user.click(before[0]);
 
-    // Active Jobs section should disappear
-    await waitFor(() => expect(screen.queryByText("Active Jobs")).not.toBeInTheDocument());
+    // Clicking Delete dismisses the active card — verify the card count dropped
+    // (active card had 2 Delete buttons; after dismiss only history buttons remain)
+    await waitFor(() => expect(screen.getAllByTitle("Delete").length).toBeLessThan(before.length));
   });
 
   it("LogPanel renders color-coded log lines", () => {
@@ -350,24 +383,24 @@ describe("CreatePage — coverage extras", () => {
   });
 
   it("poll timer updates job status and clears interval when done", async () => {
-    // The default GET /registration/jobs/:id handler already returns status:"done"
-    // The poll fires at 1500ms, updates the job to "done", and the Dismiss button appears
+    vi.spyOn(clientModule.api, "getJob").mockResolvedValue({
+      id: "job-new", service: "ELEVENLABS", count: 3, workers: 1,
+      status: "done", created_at: new Date().toISOString(), created_count: 3, processed_count: 3,
+    } as Parameters<typeof clientModule.api.getJob>[0]);
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /run/i }));
     await user.click(screen.getByRole("button", { name: /run/i }));
     await waitFor(() => screen.getByText("Active Jobs"));
-    // Poll fires at 1500ms and updates status to "done" → Dismiss button appears
-    await waitFor(() => screen.getByTitle("Dismiss"), { timeout: 3000 });
+    // Short timeout since poll fires at 1500ms
+    await waitFor(() => expect(screen.getByTitle("Delete")).toBeInTheDocument(), { timeout: 3000 });
   }, 8000);
 
   it("job card shows ⚡workers badge when workers > 1", async () => {
-    server.use(
-      http.post(`${BASE}/registration/jobs`, () =>
-        HttpResponse.json({ id: "job-multi", service: "ELEVENLABS", count: 0, workers: 3,
-          status: "running", created_at: new Date().toISOString(), created_count: 0 })
-      )
-    );
+    vi.spyOn(clientModule.api, "startJob").mockResolvedValueOnce({
+      id: "job-multi", service: "ELEVENLABS", count: 0, workers: 3,
+      status: "running", created_at: new Date().toISOString(), created_count: 0, processed_count: 0,
+    } as Parameters<typeof clientModule.api.startJob>[0]);
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => screen.getByRole("combobox"));

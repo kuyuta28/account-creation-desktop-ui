@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, Job, wsLogs, _API_ORIGIN } from "../api/client";
+import { api, Job, wsLogs } from "../api/client";
 
 // ── Per-service config persistence ───────────────────────────────────
 const SVC_CFG_KEY = "acc-creator:svc-cfg";
@@ -267,15 +267,17 @@ export default function CreatePage() {
     setStartError(null);
     saveSvcCfg(service, { count, workers });
     try {
-      const res = await fetch(
-        `${_API_ORIGIN}/api/v1/registration/jobs`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ service, count, workers }) }
-      );
-      const body = await res.json();
-      if (!res.ok) { setStartError(body?.error?.message ?? body?.detail ?? `Lỗi ${res.status}`); return; }
-      attachToJob(body.data as Job);
-    } catch (_) {
-      setStartError("Không kết nối được API server");
+      const job = await api.startJob(service, count, workers);
+      attachToJob(job);
+    } catch (err: unknown) {
+      if (err instanceof TypeError) {
+        // Network error (fetch failed before reaching server)
+        setStartError("Không kết nối được API server");
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        const detail = msg.match(/detail="([^"]+)"/)?.[1];
+        setStartError(detail ?? msg);
+      }
     }
   };
 

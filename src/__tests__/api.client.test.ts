@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { api, wsLogs } from "../api/client";
 import { http, HttpResponse } from "msw";
 import { server } from "./mocks/server";
-import { BASE, mockAccounts, mockJobs } from "./mocks/handlers";
+import { mockAccountsData as mockAccounts } from "./mocks/handlers";
 
 const _ok = <T>(data: T) => ({
   success: true,
@@ -10,19 +10,26 @@ const _ok = <T>(data: T) => ({
   meta: { request_id: "test", ts: new Date().toISOString() },
 });
 
+// Paginated accounts response
+const _paginatedAccounts = (accounts: typeof mockAccounts) => ({
+  success: true,
+  data: { accounts, total: accounts.length, page: 1, limit: 100, pages: 1 },
+  meta: { request_id: "test", ts: new Date().toISOString() },
+});
+
 describe("api.getAccounts", () => {
   it("returns all accounts", async () => {
     const result = await api.getAccounts();
-    expect(result).toHaveLength(mockAccounts.length);
-    expect(result[0].email).toBe("alice@test.com");
+    expect(result.accounts).toHaveLength(mockAccounts.length);
+    expect(result.accounts[0].email).toBe("alice@test.com");
   });
 
   it("passes service filter as query param", async () => {
     let capturedUrl = "";
     server.use(
-      http.get(`${BASE}/accounts`, ({ request }) => {
+      http.get(/\/accounts(\?.*)?$/, ({ request }) => {
         capturedUrl = request.url;
-        return HttpResponse.json(_ok([mockAccounts[0]]));
+        return HttpResponse.json(_paginatedAccounts([mockAccounts[0]]));
       })
     );
     await api.getAccounts("ELEVENLABS");
@@ -34,7 +41,7 @@ describe("api.deleteAccount", () => {
   it("calls DELETE with encoded service/email", async () => {
     let method = "";
     server.use(
-      http.delete(`${BASE}/accounts/:svc/:email`, ({ request }) => {
+      http.delete(/\/accounts\/[^/]+\/[^/]+/, ({ request }) => {
         method = request.method;
         return HttpResponse.json(_ok({ deleted: true }));
       })
@@ -49,7 +56,7 @@ describe("api.updateAccount", () => {
   it("sends PATCH with body", async () => {
     let body: unknown;
     server.use(
-      http.patch(`${BASE}/accounts/:svc/:email`, async ({ request }) => {
+      http.patch(/\/accounts\/[^/]+\/[^/]+/, async ({ request }) => {
         body = await request.json();
         return HttpResponse.json(_ok(mockAccounts[0]));
       })
@@ -71,9 +78,9 @@ describe("api.startJob", () => {
   it("POSTs correct payload", async () => {
     let body: unknown;
     server.use(
-      http.post(`${BASE}/registration/jobs`, async ({ request }) => {
+      http.post(/\/registration\/jobs/, async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json(_ok(mockJobs[0]));
+        return HttpResponse.json(_ok({ id: "job-new", service: "CHATGPT", count: 5, workers: 2, status: "running", created_at: "", created_count: 0, processed_count: 0 }));
       })
     );
     await api.startJob("CHATGPT", 5, 2);
@@ -83,9 +90,9 @@ describe("api.startJob", () => {
   it("defaults workers to 1", async () => {
     let body: unknown;
     server.use(
-      http.post(`${BASE}/registration/jobs`, async ({ request }) => {
+      http.post(/\/registration\/jobs/, async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json(_ok(mockJobs[0]));
+        return HttpResponse.json(_ok({ id: "job-new", service: "CHATGPT", count: 3, workers: 1, status: "running", created_at: "", created_count: 0, processed_count: 0 }));
       })
     );
     await api.startJob("CHATGPT", 3);
@@ -96,10 +103,15 @@ describe("api.startJob", () => {
 describe("api.getJobs / getJob", () => {
   it("getJobs returns list", async () => {
     const result = await api.getJobs();
-    expect(result).toHaveLength(mockJobs.length);
+    expect(result).toHaveLength(2);
   });
 
   it("getJob returns single job", async () => {
+    server.use(
+      http.get(/\/registration\/jobs\/job-2\/?/, ({ request }) => {
+        return HttpResponse.json(_ok({ id: "job-2", service: "OPENROUTER", count: 5, workers: 1, status: "done", created_at: "2026-01-01T08:00:00Z", created_count: 5, processed_count: 5 }));
+      })
+    );
     const result = await api.getJob("job-2");
     expect(result.id).toBe("job-2");
     expect(result.status).toBe("done");
@@ -108,6 +120,11 @@ describe("api.getJobs / getJob", () => {
 
 describe("api.cancelJob", () => {
   it("POSTs to cancel endpoint", async () => {
+    server.use(
+      http.post(/\/registration\/jobs\/[^/]+\/cancel\/?/, () => {
+        return HttpResponse.json(_ok({ cancelled: true }));
+      })
+    );
     const result = await api.cancelJob("job-2");
     expect(result.cancelled).toBe(true);
   });
@@ -122,7 +139,7 @@ describe("api.config", () => {
   it("saveConfigRaw sends PUT with content", async () => {
     let body: unknown;
     server.use(
-      http.put(`${BASE}/config/raw`, async ({ request }) => {
+      http.put(/\/config\/raw/, async ({ request }) => {
         body = await request.json();
         return HttpResponse.json(_ok({ saved: true }));
       })
