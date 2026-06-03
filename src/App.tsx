@@ -9,9 +9,6 @@ import ArtificialAnalysisPage from "./pages/ArtificialAnalysis";
 import SmsPhonesPage from "./pages/SmsPhonesPage";
 import TTSPage from "./pages/TTSPage";
 import ServicesPage from "./pages/ServicesPage";
-import AarCreatePage from "./pages/AarCreatePage";
-import AarAccountsPage from "./pages/AarAccountsPage";
-import AarConfigPage from "./pages/AarConfigPage";
 
 const NAV = [
   {
@@ -105,33 +102,6 @@ const NAV = [
       </svg>
     ),
   },
-  {
-    to: "/aar-create",
-    label: "AAR: Đăng ký",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    to: "/aar-accounts",
-    label: "AAR: Accounts",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-    ),
-  },
-  {
-    to: "/aar-config",
-    label: "AAR: Config",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-      </svg>
-    ),
-  },
 ];
 
 function Sidebar() {
@@ -197,9 +167,6 @@ function MainContent() {
           <Route path="/aa-web" element={<ArtificialAnalysisPage />} />
           <Route path="/tts" element={<TTSPage />} />
           <Route path="/services" element={<ServicesPage />} />
-          <Route path="/aar-create" element={<AarCreatePage />} />
-          <Route path="/aar-accounts" element={<AarAccountsPage />} />
-          <Route path="/aar-config" element={<AarConfigPage />} />
         </Routes>
       </div>
     </main>

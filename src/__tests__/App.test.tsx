@@ -20,8 +20,7 @@ describe("App routing & sidebar", () => {
   it("renders all nav links", () => {
     renderApp();
     // Use getAllByRole for multiple links; each NavLink renders as <a>
-    expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(13);
-    // Check key labels are present (not using /accounts/i which matches AAR: Accounts too)
+    expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(10);
     expect(screen.getByRole("link", { name: /^accounts$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^create$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^config$/i })).toBeInTheDocument();
@@ -51,7 +50,6 @@ describe("App routing & sidebar", () => {
 
   it("active nav link has active class for /", () => {
     renderApp("/");
-    // "Accounts" (exact, not "AAR: Accounts")
     const accountsLink = screen.getByRole("link", { name: /^accounts$/i });
     expect(accountsLink.className).toContain("text-brand-700");
   });
