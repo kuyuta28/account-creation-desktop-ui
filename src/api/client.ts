@@ -393,7 +393,21 @@ export const api = {
 
   // ── Mailbox ──────────────────────────────────────────────────────────
   createMailbox: (provider?: string) =>
-    post<{ email: string; provider: string; created_at: number }>("/mailbox", { provider: provider ?? null }),
+    post<{ job_id: string; status: string; provider: string | null }>(
+      "/mailbox",
+      { provider: provider ?? null }
+    ),
+
+  getMailboxJob: (jobId: string) =>
+    get<{
+      id: string;
+      status: "pending" | "running" | "done" | "failed";
+      provider: string | null;
+      result?: { email: string; provider: string; created_at: number };
+      error?: string;
+      created_at: number;
+      finished_at?: number;
+    }>(`/mailbox/jobs/${encodeURIComponent(jobId)}`),
 
   listMailboxes: () =>
     get<{ email: string; provider: string; created_at: number }[]>("/mailbox"),
