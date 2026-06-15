@@ -58,6 +58,31 @@ export interface TTSGenerateParams {
   voice_id: string;   // Gemini voice name, e.g. "Charon"
 }
 
+export interface NineRouterKey {
+  id: string;
+  provider: string;
+  name: string | null;
+  email: string | null;
+  priority: number;
+  isActive: number;
+  api_key: string | null;       // giá trị thật — admin view
+  data_email: string | null;
+  data_len: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NineRouterKeysData {
+  db_path: string;
+  db_exists: boolean;
+  db_size_bytes: number;
+  db_mtime: string | null;
+  total_connections: number;
+  active_connections: number;
+  inactive_connections: number;
+  keys: NineRouterKey[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const _get = <T>(path: string) =>
@@ -114,5 +139,13 @@ export const ttsApi = {
       blobUrl: URL.createObjectURL(blob),
       voiceId: r.headers.get("X-Voice-Id") ?? params.voice_id,
     };
+  },
+
+  // ── Admin: 9router keys (real values — admin only) ─────────────────
+  adminNineRouterKeys: () => _get<NineRouterKeysData>("/admin/9router/keys"),
+
+  adminNineRouterReload: async (): Promise<{ reloaded: number }> => {
+    const r = await fetch(`${TTS_BASE}/admin/9router/reload`, { method: "POST" });
+    return _parseEnvelope<{ reloaded: number }>(r);
   },
 };
