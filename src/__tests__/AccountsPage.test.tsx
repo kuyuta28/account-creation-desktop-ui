@@ -58,6 +58,24 @@ describe("AccountsPage — service tabs", () => {
     expect(screen.getByRole("button", { name: /^OPENROUTER/ })).toBeInTheDocument();
   });
 
+  it("shows service tab counts from server totals, not current page", async () => {
+    server.use(
+      http.get(/\/accounts\/?(\?.*)?$/, () => HttpResponse.json(paginatedAccounts(mockAccounts, 1, 2, 55))),
+      http.get(/\/accounts\/service-counts/, () => HttpResponse.json({
+        success: true,
+        data: { ALL: 55, ELEVENLABS: 40, OPENROUTER: 15, CHATGPT: 0 },
+        meta: { request_id: "test", ts: "2026-01-01T00:00:00Z" },
+      })),
+    );
+
+    renderPage();
+    await waitFor(() => screen.getByText("alice@test.com"));
+
+    expect(screen.getByRole("button", { name: /^ALL55$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ELEVENLABS40$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^OPENROUTER15$/ })).toBeInTheDocument();
+  });
+
   it("filters by service when tab clicked", async () => {
     const user = userEvent.setup();
     renderPage();

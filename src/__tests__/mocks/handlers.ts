@@ -19,6 +19,9 @@ const _handlers = [
   http.get(/\/accounts\/services/, () => HttpResponse.json({
     success: true, data: ["ELEVENLABS", "OPENROUTER", "CHATGPT"], meta: _meta,
   })),
+  http.get(/\/accounts\/service-counts/, () => HttpResponse.json({
+    success: true, data: { ALL: 3, ELEVENLABS: 2, OPENROUTER: 1, CHATGPT: 0 }, meta: _meta,
+  })),
   http.delete(/\/accounts\/[^/]+\/[^/]+/, () => HttpResponse.json({
     success: true, data: { deleted: true }, meta: _meta,
   })),

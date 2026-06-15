@@ -27,7 +27,6 @@ interface Props {
   // Ollama actions
   syncingOllama: boolean;
   onSyncOllama: () => void;
-  syncingOllama9router: boolean;
   previewing9router: boolean;
   onPreviewSyncOllama9router: () => void;
 
@@ -49,7 +48,7 @@ export default function ActionsDropdown({
   syncingOR, orPrivacyRunning, orPrivacyProgress,
   cleaningOR, cleanORProgress, fixingPrivacy, fixPrivacyProgress,
   onSyncOR, onCheckORPrivacy, onCheckAndCleanOR, onFixORPrivacy,
-  syncingOllama, onSyncOllama, syncingOllama9router, previewing9router,
+  syncingOllama, onSyncOllama, previewing9router,
   onPreviewSyncOllama9router,
   syncing, syncingAuth, onSyncProxy, onSyncAuth,
   onKlingSession,

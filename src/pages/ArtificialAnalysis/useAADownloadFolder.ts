@@ -1,16 +1,24 @@
 import { useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 
+/**
+ * useAADownloadFolder — the Tauri desktop build had a native folder
+ * picker; in the web build the user types a path/label for their own
+ * reference and the actual file save goes through the browser's own
+ * download dialog (see downloadUtils.ts). The state shape is preserved
+ * so call sites in the AA page don't change.
+ */
 export function useAADownloadFolder() {
   const [downloadFolder, setDownloadFolder] = useState<string>(
     () => localStorage.getItem("aa_download_folder") ?? ""
   );
 
-  const handlePickFolder = async () => {
-    const selected = await open({ directory: true, multiple: false, title: "Chọn thư mục lưu ảnh" });
-    if (typeof selected === "string" && selected) {
-      setDownloadFolder(selected);
-      localStorage.setItem("aa_download_folder", selected);
+  const handlePickFolder = () => {
+    const path = window.prompt(
+      "Nhập đường dẫn thư mục lưu ảnh (chỉ ghi nhớ — web app dùng browser download):"
+    );
+    if (typeof path === "string" && path) {
+      setDownloadFolder(path);
+      localStorage.setItem("aa_download_folder", path);
     }
   };
 

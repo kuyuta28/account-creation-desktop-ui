@@ -11,7 +11,8 @@ export function useAAAccounts() {
   const [openingBrowser, setOpeningBrowser] = useState(false);
 
   const refreshAccounts = () =>
-    api.getAccounts("ARTIFICIALANALYSIS").then((accs) => {
+    api.getAccounts("ARTIFICIALANALYSIS").then((resp) => {
+      const accs = resp.accounts ?? [];
       const withSession = accs.filter((a) => a.session_state && !a.disabled);
       setAccounts(withSession);
       if (withSession.length > 0 && !selectedEmail) setSelectedEmail(withSession[0].email);

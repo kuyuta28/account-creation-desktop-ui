@@ -146,8 +146,8 @@ export default function SyncModal({
             <h3 className="font-semibold text-gray-900">{title}</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               Sync to {targetName} · {stats.total} accounts ·{" "}
-              <span className="text-emerald-600 font-medium">{stats.willSync} new</span> ·{" "}
-              <span className="text-gray-400">{stats.exists} exists</span>
+              <span className="text-emerald-600 font-medium">{stats.newCount} new</span> ·{" "}
+              <span className="text-gray-400">{stats.existsCount} exists</span>
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -179,7 +179,7 @@ export default function SyncModal({
           >
             <option value="all">All ({filteredStats.total})</option>
             <option value="new">Not synced ({filteredStats.willSync})</option>
-            <option value="exists">Exists ({stats.exists})</option>
+            <option value="exists">Exists ({stats.existsCount})</option>
           </select>
           <div className="flex-1" />
           <button

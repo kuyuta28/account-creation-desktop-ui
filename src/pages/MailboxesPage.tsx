@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MailboxesPage.tsx
  *
  * Quản lý Gmail mailboxes — inbox credential dùng để đăng ký service.

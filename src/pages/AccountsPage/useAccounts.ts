@@ -28,6 +28,7 @@ export interface UseAccountsReturn {
   filtered: Account[];
   sorted: Account[];
   pageData: Account[];
+  total: number;
   totalPages: number;
 
   serviceCounts: Record<string, number>;
@@ -54,6 +55,7 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
   const [serverTotal, setServerTotal]       = useState(0);
   const [serverPages, setServerPages]       = useState(1);
   const [services, setServices]             = useState<string[]>(["ALL"]);
+  const [serviceCounts, setServiceCounts]   = useState<Record<string, number>>({ ALL: 0 });
   const [loading, setLoading]               = useState(false);
 
   const [serviceFilter, setServiceFilter] = useState("ALL");
@@ -81,6 +83,15 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
       })
       .catch((err) => onToast(`Load lỗi: ${String(err)}`, false))
       .finally(() => setLoading(false));
+    // Service counts is best-effort: the backend may not expose
+    // /accounts/service-counts yet, and the table should still load
+    // even when that endpoint is missing.
+    api
+      .getServiceCounts()
+      .then((counts) => setServiceCounts(counts))
+      .catch(() => {
+        // swallow — leave serviceCounts as the empty default
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceFilter]);
 
@@ -170,12 +181,6 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
   const totalPages = Math.max(1, serverPages);
   const pageData   = sorted;
 
-  const serviceCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: serverTotal };
-    for (const a of serverAccounts) counts[a.service] = (counts[a.service] ?? 0) + 1;
-    return counts;
-  }, [serverAccounts, serverTotal]);
-
   const disabledCountForService = useMemo(() => {
     const base = serviceFilter === "ALL" ? serverAccounts : serverAccounts.filter((a) => a.service === serviceFilter);
     return base.filter((a) => a.status === "disabled").length;
@@ -195,6 +200,7 @@ export function useAccounts(onToast: (msg: string, ok: boolean) => void): UseAcc
     get filtered() { return filtered; },
     get sorted() { return sorted; },
     get pageData() { return pageData; },
+    get total() { return serverTotal; },
     totalPages,
     serviceCounts, disabledCountForService, activeCount, withKeyCount,
     visibleCols, col, toggleCol,

@@ -1,14 +1,17 @@
 /**
- * tts.ts — API client cho Gemini TTS Proxy (port 8700).
+ * tts.ts — API client cho Gemini TTS Proxy.
  *
  * /health và /voices trả về ApiResponse[T] envelope.
  * /tts trả về binary WAV — không envelope.
+ *
+ * VITE_TTS_BASE_URL is optional — defaults to "/tts" so the web app can
+ * be served from the same host as the traefik reverse proxy in the dev
+ * docker stack (TTS path is /tts/*, TTS_BASE_URL becomes "/tts/api").
  */
 
-if (!import.meta.env.VITE_TTS_BASE_URL)
-  throw new Error("VITE_TTS_BASE_URL không được cấu hình");
+import { TTS_BASE_URL } from "../config";
 
-const TTS_BASE = `${import.meta.env.VITE_TTS_BASE_URL}/api`;
+const TTS_BASE = `${TTS_BASE_URL}/api`;
 
 // ── Envelope ──────────────────────────────────────────────────────────────────
 

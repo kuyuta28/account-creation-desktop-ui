@@ -1,6 +1,5 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
-import { writeFile } from "@tauri-apps/plugin-fs";
+import { useEffect, useRef, useState } from "react";
+
 import { ttsApi, type GeminiVoice } from "../api/tts";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
@@ -51,11 +50,17 @@ export default function TTSPage() {
       setTimeout(() => audioRef.current?.play(), 50);
 
       if (autoDownload) {
-        if (!downloadFolder) throw new Error("Auto download đang bật nhưng chưa chọn thư mục lưu");
+        // Browser download — the user picks the save location from the
+        // browser's download dialog. The `downloadFolder` text input is
+        // shown for context but does not actually direct the file on
+        // disk; web apps have no folder-picker capability.
         const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const savePath = `${downloadFolder}\\tts-${ts}.wav`;
-        const buf = await fetch(result.blobUrl).then((r) => r.arrayBuffer());
-        await writeFile(savePath, new Uint8Array(buf));
+        const a = document.createElement("a");
+        a.href = result.blobUrl;
+        a.download = `tts-${ts}.wav`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -64,26 +69,23 @@ export default function TTSPage() {
     }
   };
 
+  // The folder picker is Tauri-only. In the web app we just show a
+  // text input where the user can type a label / path for reference.
+  // Actual downloads go through the browser's native download dialog.
   const pickFolder = async () => {
-    const selected = await open({ directory: true, title: "Chọn thư mục lưu audio" });
-    if (selected) setDownloadFolder(selected as string);
+    const path = window.prompt("Nhập đường dẫn thư mục lưu audio (chỉ mang tính chất ghi nhớ):");
+    if (path) setDownloadFolder(path);
   };
 
   const downloadCurrent = async () => {
     if (!audioUrl) return;
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const savePath = downloadFolder
-      ? `${downloadFolder}\\tts-${ts}.wav`
-      : null;
-    if (!savePath) {
-      const a = document.createElement("a");
-      a.href = audioUrl;
-      a.download = `tts-${ts}.wav`;
-      a.click();
-      return;
-    }
-    const buf = await fetch(audioUrl).then((r) => r.arrayBuffer());
-    await writeFile(savePath, new Uint8Array(buf));
+    const a = document.createElement("a");
+    a.href = audioUrl;
+    a.download = `tts-${ts}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (

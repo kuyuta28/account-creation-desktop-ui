@@ -52,7 +52,7 @@ export default function AccountsPage() {
     fixingPrivacy, fixPrivacyProgress, fixORPrivacy,
     // OR sync modal
     orSyncModalOpen, setOrSyncModalOpen,
-    orPreviewLoading, orSyncPreview, previewSyncOR,
+    orPreviewLoading, orSyncPreview,
     // Ollama
     syncingOllama, syncOllamaToCliproxy,
     syncingOllama9router, previewing9router, previewSyncOllamaTo9router,
@@ -193,7 +193,6 @@ export default function AccountsPage() {
             onFixORPrivacy={fixORPrivacy}
             syncingOllama={syncingOllama}
             onSyncOllama={syncOllamaToCliproxy}
-            syncingOllama9router={syncingOllama9router}
             previewing9router={previewing9router}
             onPreviewSyncOllama9router={previewSyncOllamaTo9router}
             syncing={syncing}

@@ -20,14 +20,11 @@ export default defineConfig({
   server: {
     port: 1421,
     strictPort: true,
-    hmr: false,
-    watch: { ignored: ["**/src-tauri/**"] },
     envDir: "./",
   },
-  envPrefix: ["VITE_", "TAURI_"],
+  envPrefix: ["VITE_"],
   build: {
     target: "chrome105",
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
-    sourcemap: !!process.env.TAURI_DEBUG,
+    sourcemap: true,
   },
 });

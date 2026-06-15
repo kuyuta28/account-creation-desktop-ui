@@ -1,4 +1,4 @@
-﻿import { API_BASE_URL } from "../config";
+import { API_BASE_URL } from "../config";
 export const _API_ORIGIN = API_BASE_URL;
 const BASE = _API_ORIGIN;
 
@@ -253,6 +253,8 @@ export const api = {
     ),
 
   getServices: () => get<string[]>("/accounts/services"),
+
+  getServiceCounts: () => get<Record<string, number>>("/accounts/service-counts"),
 
   addService: (name: string, has_registrar = false) =>
     post<{ created: boolean; name: string }>("/accounts/services", { name, has_registrar }),

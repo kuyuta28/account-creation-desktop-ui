@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api, MailProviderDomain, MailProvider } from "../api/client";
 
 // Display names cho service — optional, fallback về tên gốc khi không có mapping
