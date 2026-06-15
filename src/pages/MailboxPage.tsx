@@ -56,16 +56,28 @@ export default function MailboxPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [detail, setDetail] = useState<MessageDetail | null>(null);
-  const [creating, setCreating] = useState(false);
+  // `submitting` chỉ true trong lúc gọi POST /mailbox (rất nhanh, ~50ms).
+  // Sau khi có job_id thì set false; polling diễn ra ngầm cho đến khi job done/fail.
+  const [submitting, setSubmitting] = useState(false);
+  const [activeJob, setActiveJob] = useState<{ id: string; provider: string | null } | null>(null);
   const [provider, setProvider] = useState("mail.tm");
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [copied, setCopied] = useState("");
   const [viewMode, setViewMode] = useState<"rendered" | "text" | "source">(
     "rendered"
   );
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const jobPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Show toast auto-dismiss after 4s
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   // Load mailboxes on mount
   const loadBoxes = useCallback(async () => {
@@ -149,16 +161,66 @@ export default function MailboxPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────
   const handleCreate = async () => {
-    setCreating(true);
+    setSubmitting(true);
     setError("");
+    let jobId: string;
     try {
-      const box = await api.createMailbox(provider);
-      setBoxes((prev) => [box, ...prev]);
-      setSelected(box.email);
+      const { job_id, provider: usedProvider } = await api.createMailbox(provider);
+      jobId = job_id;
+      setActiveJob({ id: job_id, provider: usedProvider });
     } catch (e: any) {
       setError(e.message);
+      setToast({ kind: "error", message: `Failed to start: ${e.message}` });
+      setSubmitting(false);
+      return;
     }
-    setCreating(false);
+    setSubmitting(false);
+
+    // Poll job status mỗi 1.5s. Tối đa 60 lần (~90s) — nếu quá timeout thì
+    // bỏ qua, user có thể refresh page hoặc tạo mailbox khác.
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60;
+    if (jobPollRef.current) clearInterval(jobPollRef.current);
+    jobPollRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > MAX_ATTEMPTS) {
+        if (jobPollRef.current) {
+          clearInterval(jobPollRef.current);
+          jobPollRef.current = null;
+        }
+        setActiveJob(null);
+        setToast({ kind: "error", message: "Job timed out (>90s). Refresh to retry." });
+        return;
+      }
+      try {
+        const job = await api.getMailboxJob(jobId);
+        if (job.status === "done" && job.result) {
+          if (jobPollRef.current) {
+            clearInterval(jobPollRef.current);
+            jobPollRef.current = null;
+          }
+          const box: ActiveMailbox = {
+            email: job.result.email,
+            provider: job.result.provider,
+            created_at: job.result.created_at,
+          };
+          setBoxes((prev) => [box, ...prev]);
+          setSelected(box.email);
+          setActiveJob(null);
+          setToast({ kind: "success", message: `Mailbox ready: ${box.email}` });
+        } else if (job.status === "failed") {
+          if (jobPollRef.current) {
+            clearInterval(jobPollRef.current);
+            jobPollRef.current = null;
+          }
+          setActiveJob(null);
+          setToast({ kind: "error", message: `Create failed: ${job.error || "unknown"}` });
+        }
+        // status === "pending" | "running" → chờ lần poll tiếp theo
+      } catch (e: any) {
+        // Lỗi poll (network) — KHÔNG cancel job, thử lại lần sau
+      }
+    }, 1500);
   };
 
   const handleDelete = async (email: string) => {
@@ -190,7 +252,21 @@ export default function MailboxPage() {
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Toast notification (top-right) */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium transition-all ${
+            toast.kind === "success"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+              : "bg-red-50 border border-red-200 text-red-800"
+          }`}
+          role="status"
+        >
+          {toast.message}
+        </div>
+      )}
+
       {/* Header row: title + create */}
       <div className="flex items-center justify-between">
         <div>
@@ -213,10 +289,14 @@ export default function MailboxPage() {
           </select>
           <button
             onClick={handleCreate}
-            disabled={creating}
+            disabled={submitting || activeJob !== null}
             className="btn-primary"
           >
-            {creating ? "Creating…" : "+ New Mailbox"}
+            {submitting
+              ? "Submitting…"
+              : activeJob
+                ? `Creating ${activeJob.provider ?? ""}…`
+                : "+ New Mailbox"}
           </button>
         </div>
       </div>
