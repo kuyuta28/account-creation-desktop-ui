@@ -25,7 +25,7 @@ export function useAABatchRelogin(onRefresh?: () => void): UseAABatchReloginRetu
     setRelogging(true);
     setReloginProgress(null);
 
-    await api.aaBatchRelogin();
+    await api.aaBatchRelogin(5, true);
 
     pollRef.current = setInterval(async () => {
       const status = await api.aaBatchReloginStatus();
