@@ -501,11 +501,11 @@ export const api = {
   aaCheckSessionsCancel: () =>
     post<{ cancelled: boolean }>("/aa/check-sessions/cancel", {}),
 
-  aaBatchRelogin: () =>
-    post<{ message: string; total: number }>("/aa/batch-relogin", {}),
+  aaBatchRelogin: (workers: number, onlyExpired: boolean) =>
+    post<{ message: string; total: number; workers: number }>("/aa/batch-relogin", { workers, only_expired: onlyExpired }),
 
   aaBatchReloginStatus: () =>
-    get<{ running: boolean; cancelled: boolean; total: number; done: number; success: number; failed: number; results: { email: string; status: string; error: string }[] }>(
+    get<{ running: boolean; cancelled: boolean; total: number; done: number; success: number; failed: number; workers: number; results: { email: string; status: string; error: string }[]; logs: { email: string; msg: string }[] }>(
       "/aa/batch-relogin/status"
     ),
 
@@ -590,11 +590,17 @@ export const api = {
 
 // ── WebSocket helpers ─────────────────────────────────────────────────────────
 
-const _WS_BASE = _API_ORIGIN.replace(/^http/, "ws");
+// _API_ORIGIN có thể là relative ("/api/v1") hoặc absolute URL. WS cần origin tuyệt đối.
+const _WS_BASE = /^https?:\/\//.test(_API_ORIGIN)
+  ? _API_ORIGIN.replace(/^http/, "ws")                       // absolute → ws/wss
+  : `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`;  // relative → origin hiện tại
 
 export const wsLogs = (jobId: string): WebSocket =>
   new WebSocket(`${_WS_BASE}/api/v1/registration/jobs/${jobId}/logs`);
 
 export const wsImageLabLogs = (jobId: string): WebSocket =>
   new WebSocket(`${_WS_BASE}/api/v1/image-lab/jobs/${jobId}/logs`);
+
+export const wsAABatchReloginLogs = (): WebSocket =>
+  new WebSocket(`${_WS_BASE}/aa/batch-relogin/logs`);
 
