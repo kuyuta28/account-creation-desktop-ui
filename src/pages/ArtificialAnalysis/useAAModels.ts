@@ -12,7 +12,26 @@ export function useAAModels(mode: "text_to_image" | "image_editing") {
   const [gensPerModel, setGensPerModel] = useState(1);
 
   useEffect(() => {
-    api.aaGetModels(mode).then(setModels).catch((e) => { throw e; });
+    api.aaGetModels(mode).then((loaded) => {
+      setModels(loaded);
+      // Auto-select the top-ranked model when list loads (if user hasn't picked yet).
+      // Top-ranked = highest Elo score for the given mode.
+      setSelectedIds((prev) => {
+        if (prev.size > 0) return prev;
+        const ranked = loaded
+          .filter((m) => (mode === "text_to_image" ? m.hasTtiEndpoint : m.hasItiEndpoint))
+          .filter((m) => (mode === "text_to_image" ? m.ttiElo !== null : m.itiElo !== null))
+          .sort((a, b) => {
+            const aElo = mode === "text_to_image" ? a.ttiElo! : a.itiElo!;
+            const bElo = mode === "text_to_image" ? b.ttiElo! : b.itiElo!;
+            return bElo - aElo;
+          });
+        if (ranked.length > 0) {
+          return new Set([ranked[0].id]);
+        }
+        return prev;
+      });
+    }).catch((e) => { throw e; });
   }, [mode]);
 
   const toggleModel = (id: string) => {

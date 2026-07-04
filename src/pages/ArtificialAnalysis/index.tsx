@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { ASPECT_RATIO_DIMENSIONS, AR_LABELS } from "./types";
 import { useAAPage } from "./useAAPage";
 import { GenerationCard } from "./GenerationCard";
+import { AccountPickerModal } from "./AccountPickerModal";
+import { BatchReloginModal } from "./BatchReloginModal";
+import { accountStatusColor, accountStatusLabel } from "./accountStatus";
 
 export default function ArtificialAnalysisPage() {
   const {
@@ -15,6 +19,7 @@ export default function ArtificialAnalysisPage() {
     checkProgress,
     handleCheckAllSessions,
     handleStopCheckSessions,
+    statuses,
     filteredModels,
     selectedIds,
     setSelectedIds,
@@ -44,6 +49,9 @@ export default function ArtificialAnalysisPage() {
     handlePickFolder,
   } = useAAPage();
 
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+
   return (
     <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
       {/* Toolbar */}
@@ -65,17 +73,30 @@ export default function ArtificialAnalysisPage() {
         <span className="flex-1" />
         {accounts.length > 0 ? (
           <div className="flex items-center gap-2 shrink-0">
-            <select
-              value={selectedEmail}
-              onChange={(e) => setSelectedEmail(e.target.value)}
-              className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-violet-400 max-w-[200px]"
+            <button
+              onClick={() => setPickerOpen(true)}
+              className={`text-xs border rounded-md px-2 py-1.5 bg-white hover:border-violet-300 focus:outline-none focus:ring-1 focus:ring-violet-400 max-w-[260px] truncate text-left transition-colors ${
+                accountStatusColor(selectedEmail, statuses)
+              } ${statuses[selectedEmail] === "expired" ? "border-red-300 bg-red-50" : "border-gray-200"}`}
+              title={statuses[selectedEmail] === "expired"
+                ? "Session expired — click Re-login"
+                : statuses[selectedEmail] === "valid"
+                  ? "Session valid"
+                  : "Session status unknown"}
             >
-              {accounts.map((a) => (
-                <option key={a.email} value={a.email}>
-                  {a.email}
-                </option>
-              ))}
-            </select>
+              {accountStatusLabel(selectedEmail, statuses)} ▾
+            </button>
+            {/* Inline status pill next to selector */}
+            {statuses[selectedEmail] === "valid" && (
+              <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200 shrink-0">
+                valid
+              </span>
+            )}
+            {statuses[selectedEmail] === "expired" && (
+              <span className="text-xs font-mono text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-200 shrink-0">
+                expired
+              </span>
+            )}
             {balance !== null && (
               <span className="text-xs font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
                 ${parseFloat(balance).toFixed(4)} credits
@@ -112,6 +133,12 @@ export default function ArtificialAnalysisPage() {
                 Check Sessions
               </button>
             )}
+            <button
+              onClick={() => setBatchOpen(true)}
+              className="text-xs px-2 py-1 rounded-md border border-violet-200 text-violet-600 hover:bg-violet-50 transition-colors shrink-0"
+            >
+              Re-login All
+            </button>
           </div>
         ) : (
           <span className="text-xs text-gray-400 italic">No saved sessions</span>
@@ -135,6 +162,19 @@ export default function ArtificialAnalysisPage() {
           </button>
         </div>
       </div>
+
+      {accounts.length > 0 && (
+        <AccountPickerModal
+          open={pickerOpen}
+          accounts={accounts}
+          statuses={statuses}
+          selectedEmail={selectedEmail}
+          onPick={(e) => { setSelectedEmail(e); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      <BatchReloginModal open={batchOpen} onClose={() => setBatchOpen(false)} />
 
       {/* Main */}
       <div className="flex-1 flex overflow-hidden">
@@ -165,11 +205,11 @@ export default function ArtificialAnalysisPage() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter text to generate an image..."
               rows={3}
-              maxLength={300}
+              maxLength={10000}
               className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-violet-400"
             />
-            <div className={`text-right text-xs mt-0.5 ${prompt.length >= 280 ? "text-red-400" : "text-gray-300"}`}>
-              {prompt.length}/300
+            <div className={`text-right text-xs mt-0.5 ${prompt.length >= 9800 ? "text-red-400" : "text-gray-300"}`}>
+              {prompt.length}/10000
             </div>
           </div>
 
