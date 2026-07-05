@@ -20,6 +20,14 @@ export function useAAAccounts() {
       const accs = resp.accounts ?? [];
       const withSession = accs.filter((a) => a.session_state && !a.disabled);
       setAccounts(withSession);
+      // Seed trạng thái từ check_status trong DB (valid/expired) — không để
+      // toàn bộ unknown chờ live probe. Live probe/probeAll sẽ overlay đè sau.
+      const seeded: Record<string, AccountStatus> = {};
+      for (const a of withSession) {
+        const cs = a.check_status?.toLowerCase();
+        seeded[a.email] = cs === "valid" ? "valid" : cs === "expired" ? "expired" : "unknown";
+      }
+      setStatuses(seeded);
       if (withSession.length > 0 && !selectedEmail) setSelectedEmail(withSession[0].email);
     });
 

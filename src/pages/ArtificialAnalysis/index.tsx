@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ASPECT_RATIO_DIMENSIONS, AR_LABELS } from "./types";
 import { useAAPage } from "./useAAPage";
 import { GenerationCard } from "./GenerationCard";
@@ -47,10 +47,19 @@ export default function ArtificialAnalysisPage() {
     loadHistory,
     downloadFolder,
     handlePickFolder,
+    refreshModels,
+    refreshing,
+    refreshError,
   } = useAAPage();
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
+
+  // Auto-refresh model list khi có account được chọn lần đầu (live scrape, không cache).
+  useEffect(() => {
+    if (selectedEmail) refreshModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmail]);
 
   return (
     <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
@@ -139,6 +148,19 @@ export default function ArtificialAnalysisPage() {
             >
               Re-login All
             </button>
+            <button
+              onClick={refreshModels}
+              disabled={refreshing || !selectedEmail}
+              className="text-xs px-2 py-1 rounded-md border border-violet-200 text-violet-600 hover:bg-violet-50 disabled:opacity-50 transition-colors shrink-0"
+              title="Scrape model list live từ AA Image Lab"
+            >
+              {refreshing ? "Refreshing…" : "Refresh Models"}
+            </button>
+            {refreshError && (
+              <span className="text-xs text-red-500 truncate max-w-[160px]" title={refreshError}>
+                ⚠ {refreshError}
+              </span>
+            )}
           </div>
         ) : (
           <span className="text-xs text-gray-400 italic">No saved sessions</span>

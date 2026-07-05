@@ -10,7 +10,7 @@ export function useAAPage() {
   const [mode, setMode] = useState<"text_to_image" | "image_editing">("text_to_image");
 
   const accounts = useAAAccounts();
-  const models = useAAModels(mode);
+  const models = useAAModels(mode, accounts.selectedEmail);
   const history = useAAHistory(accounts.selectedEmail);
   const generate = useAAGenerate();
   const folder = useAADownloadFolder();

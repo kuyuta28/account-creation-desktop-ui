@@ -1,21 +1,28 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "../../api/client";
 import { ASPECT_RATIO_DIMENSIONS } from "./types";
 import type { AAModel, AspectRatioKey, DimensionOption } from "./types";
 
-export function useAAModels(mode: "text_to_image" | "image_editing") {
+export function useAAModels(mode: "text_to_image" | "image_editing", selectedEmail: string) {
   const [models, setModels] = useState<AAModel[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [modelSearch, setModelSearch] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
   const [aspectRatio, setAspectRatio] = useState<AspectRatioKey>("1:1 (Square)");
   const [dimension, setDimension] = useState<DimensionOption>(ASPECT_RATIO_DIMENSIONS["1:1 (Square)"][2]);
   const [gensPerModel, setGensPerModel] = useState(1);
 
-  useEffect(() => {
-    api.aaGetModels(mode).then((loaded) => {
+  // Refresh model list live từ AA Image Lab qua Browser Gateway.
+  // Bỏ cache — mỗi lần bấm = 1 browser session scrape DOM tươi.
+  const refreshModels = async () => {
+    if (!selectedEmail || refreshing) return;
+    setRefreshing(true);
+    setRefreshError("");
+    try {
+      const loaded = await api.aaRefreshModels(selectedEmail, mode);
       setModels(loaded);
-      // Auto-select the top-ranked model when list loads (if user hasn't picked yet).
-      // Top-ranked = highest Elo score for the given mode.
+      // Auto-select top-ranked model nếu user chưa pick.
       setSelectedIds((prev) => {
         if (prev.size > 0) return prev;
         const ranked = loaded
@@ -26,13 +33,14 @@ export function useAAModels(mode: "text_to_image" | "image_editing") {
             const bElo = mode === "text_to_image" ? b.ttiElo! : b.itiElo!;
             return bElo - aElo;
           });
-        if (ranked.length > 0) {
-          return new Set([ranked[0].id]);
-        }
-        return prev;
+        return ranked.length > 0 ? new Set([ranked[0].id]) : prev;
       });
-    }).catch((e) => { throw e; });
-  }, [mode]);
+    } catch (e) {
+      setRefreshError(String(e));
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const toggleModel = (id: string) => {
     setSelectedIds((prev) => {
@@ -43,11 +51,15 @@ export function useAAModels(mode: "text_to_image" | "image_editing") {
   };
 
   const selectTop = (n: number) => {
-    const top = models
+    const ranked = models
       .filter((m) => (mode === "text_to_image" ? m.hasTtiEndpoint : m.hasItiEndpoint))
-      .slice(0, n)
-      .map((m) => m.id);
-    setSelectedIds(new Set(top));
+      .filter((m) => (mode === "text_to_image" ? m.ttiElo !== null : m.itiElo !== null))
+      .sort((a, b) => {
+        const aElo = mode === "text_to_image" ? a.ttiElo! : a.itiElo!;
+        const bElo = mode === "text_to_image" ? b.ttiElo! : b.itiElo!;
+        return bElo - aElo;
+      });
+    setSelectedIds(new Set(ranked.slice(0, n).map((m) => m.id)));
   };
 
   const filteredModels = models.filter(
@@ -83,5 +95,8 @@ export function useAAModels(mode: "text_to_image" | "image_editing") {
     gensPerModel,
     setGensPerModel,
     estCost,
+    refreshModels,
+    refreshing,
+    refreshError,
   };
 }

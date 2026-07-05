@@ -467,8 +467,8 @@ export const api = {
   aaRelogin: (email: string) =>
     post<{ email: string; logs: string[] }>("/aa/relogin", { email }),
 
-  aaGetModels: (mode: "text_to_image" | "image_editing" | "all" = "text_to_image") =>
-    get<AAModel[]>(`/aa/models?mode=${mode}`),
+  aaRefreshModels: (email: string, mode: "text_to_image" | "image_editing" | "all" = "all") =>
+    post<AAModel[]>("/aa/models/refresh", { email, mode }),
 
   aaGetGenerations: (email: string, limit = 20, cursor?: string) =>
     get<{ generations: AAGeneration[]; nextCursor: string | null; hasMore: boolean }>(
