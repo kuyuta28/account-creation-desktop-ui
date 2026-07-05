@@ -6,9 +6,14 @@ type Tab = "ui" | "raw";
 
 const FILE_LABELS: Record<string, string> = {
   "config.yaml":                    "Core",
+  "platform.yaml":                 "Platform",
   "logging.yaml":                  "Logging",
   "mail.yaml":                     "Mail",
   "captcha.yaml":                  "Captcha",
+  "cloudflare.yaml":               "Cloudflare",
+  "ninerouter.yaml":               "9Router",
+  "proton.yaml":                   "Proton",
+  "gmail.yaml":                    "Gmail",
   "elevenlabs.yaml":               "ElevenLabs",
   "openrouter.yaml":               "OpenRouter",
   "chatgpt.yaml":                 "ChatGPT",
@@ -22,9 +27,14 @@ const FILE_LABELS: Record<string, string> = {
 
 const FILE_ICONS: Record<string, string> = {
   "config.yaml":                    "⚙️",
+  "platform.yaml":                 "🖥️",
   "logging.yaml":                  "📝",
   "mail.yaml":                     "✉️",
   "captcha.yaml":                  "🔒",
+  "cloudflare.yaml":               "🟧",
+  "ninerouter.yaml":               "🔌",
+  "proton.yaml":                   "🔐",
+  "gmail.yaml":                    "📨",
   "elevenlabs.yaml":               "🎙️",
   "openrouter.yaml":               "🔀",
   "chatgpt.yaml":                 "🤖",
